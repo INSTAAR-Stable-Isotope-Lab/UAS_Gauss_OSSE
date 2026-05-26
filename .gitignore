@@ -1,0 +1,33 @@
+# R session files
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+
+# Local caches and raw external data
+cache/
+data/raw/
+data/fluxData/
+*.zip
+
+# Generated exploratory figures and animations
+figures/
+figures.generated-local/
+*.gif
+
+# Heavy generated intermediates
+output/ameriflux_wind_variability_all.csv
+output/dimensionless_framework_runs.csv
+output/dimensionless_framework_discussion_revision_smoke*
+output/*.rds
+output/*.RData
+output/smoke_*
+
+# Manuscript/editor artifacts kept local
+*.docx
+~$*
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak

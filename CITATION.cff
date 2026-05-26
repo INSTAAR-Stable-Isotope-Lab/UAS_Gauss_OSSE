@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "If you use this publication companion, please cite the associated manuscript and this software repository."
+title: "UAS Gauss OSSE publication companion"
+type: software
+version: "0.1.0"
+date-released: "2026-05-20"
+license: "GPL-3.0-or-later"
+authors:
+  - family-names: Rozmiarek
+    given-names: Kevin S.
+  - family-names: Miller
+    given-names: Elijah A.
+  - family-names: Overeem
+    given-names: Irina
+  - family-names: Rieker
+    given-names: Gregory B.
+  - family-names: Jones
+    given-names: Tyler R.
+preferred-citation:
+  type: article
+  title: "Evaluation of area-source methane-emission quantification by Uncrewed Aerial Systems using Gauss's law"
+  authors:
+    - family-names: Rozmiarek
+      given-names: Kevin S.
+    - family-names: Miller
+      given-names: Elijah A.
+    - family-names: Overeem
+      given-names: Irina
+    - family-names: Rieker
+      given-names: Gregory B.
+    - family-names: Jones
+      given-names: Tyler R.
+  year: 2026

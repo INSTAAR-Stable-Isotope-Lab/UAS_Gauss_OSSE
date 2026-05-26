@@ -1,0 +1,18 @@
+analysis,group,recommendation,threshold_metric,threshold_value,threshold_unit,mean_bias_pct,rmse_pct,valid_fraction
+spatial,B,8 azimuths x 20 heights,coarsest design meeting RMSE < 25%,235.619449019235,m^2,-5.151494,15.8831615152274,1
+spatial,D,8 azimuths x 20 heights,coarsest design meeting RMSE < 25%,235.619449019235,m^2,-14.748668,23.0005643440851,1
+spatial,F,96 azimuths x 50 heights,coarsest design meeting RMSE < 25%,7.85398163397448,m^2,-28.297802,29.019045498231,1
+temporal,B-D | Single sequential mission,12.0 h,maximum mission duration meeting RMSE < 25%,12,h,-12.30495,12.3626604220127,1
+temporal,B-D | Repeated full-profile mean,2.0 h,maximum full-profile duration meeting RMSE < 25%,2,h,-3.50547666666667,3.55489191842265,1
+temporal,C-D | Single sequential mission,12.0 h,maximum mission duration meeting RMSE < 25%,12,h,-5.6529,5.71169789642275,1
+temporal,C-D | Repeated full-profile mean,2.0 h,maximum full-profile duration meeting RMSE < 25%,2,h,-1.68898,1.73872072541855,1
+temporal,C-F | Single sequential mission,12.0 h,maximum mission duration meeting RMSE < 25%,12,h,-13.73843,13.7613483864773,1
+temporal,C-F | Repeated full-profile mean,2.0 h,maximum full-profile duration meeting RMSE < 25%,2,h,-3.28741,3.36880987151909,1
+temporal,D-B | Single sequential mission,12.0 h,maximum mission duration meeting RMSE < 25%,12,h,13.52317,13.5644769972896,1
+temporal,D-B | Repeated full-profile mean,2.0 h,maximum full-profile duration meeting RMSE < 25%,2,h,0.514386666666668,0.693486095510693,1
+temporal,F-D | Single sequential mission,12.0 h,maximum mission duration meeting RMSE < 25%,12,h,23.50112,23.5612793992177,1
+temporal,F-D | Repeated full-profile mean,2.0 h,maximum full-profile duration meeting RMSE < 25%,2,h,3.13980833333333,3.23279291589418,1
+nearby,C,200 m,minimum distance meeting |contamination bias| < 10%,200,m,-7.524254,9.90200107907487,1
+nearby,D,200 m,minimum distance meeting |contamination bias| < 10%,200,m,-3.810434,5.41432922076225,1
+nearby,F,200 m,minimum distance meeting |contamination bias| < 10%,200,m,-0.397973999999999,3.78745710676702,1
+overall,all,Combined capability envelope,summary,,"",103.03789,104.886448297959,1
