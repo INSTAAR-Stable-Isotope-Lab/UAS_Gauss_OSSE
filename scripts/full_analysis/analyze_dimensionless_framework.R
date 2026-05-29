@@ -28,7 +28,6 @@
 #   - dimensionless_framework_binned_summary.csv
 #   - dimensionless_framework_composite.png
 #   - dimensionless_framework_additional_transitions_2x2.png
-#   - dimensionless_framework_report.md
 ###############################################################################
 
 suppressPackageStartupMessages({
@@ -199,7 +198,6 @@ BINNED_CSV <- file.path(OUTPUT_DIR, sprintf("%s_binned_summary.csv", OUTPUT_STEM
 PI_DIAGNOSTIC_CSV <- file.path(OUTPUT_DIR, sprintf("%s_pi_diagnostic_summary.csv", OUTPUT_STEM))
 FIG_PNG <- file.path(OUTPUT_DIR, sprintf("%s_composite.png", OUTPUT_STEM))
 ADDITIONAL_FIG_PNG <- file.path(OUTPUT_DIR, sprintf("%s_additional_transitions_2x2.png", OUTPUT_STEM))
-REPORT_MD <- file.path(OUTPUT_DIR, sprintf("%s_report.md", OUTPUT_STEM))
 
 
 # -----------------------------------------------------------------------------
@@ -1297,13 +1295,6 @@ build_dimensionless_plot <- function(binned_dt, transition_labels = TRANSITION_L
   cowplot::plot_grid(rmse_plot, rmse_sd_plot, ncol = 2, rel_widths = c(1, 1))
 }
 
-format_duration <- function(seconds) {
-  if (!is.finite(seconds)) return("NA")
-  if (seconds < 60) return(sprintf("%.1f sec", seconds))
-  if (seconds < 3600) return(sprintf("%.1f min", seconds / 60))
-  sprintf("%.2f h", seconds / 3600)
-}
-
 build_uniform_height_midpoints <- function(n_levels, top_height_m) {
   step_m <- top_height_m / n_levels
   seq(step_m / 2, top_height_m - step_m / 2, length.out = n_levels)
@@ -1321,77 +1312,6 @@ resolve_dimensionless_design_cfg <- function(base_design_cfg, top_height_m, heig
   out$name <- sprintf("%s_%s_top%gm", base_design_cfg$name, height_mode, top_height_m)
   out$heights_m <- heights_m
   out
-}
-
-build_report_lines <- function(run_dt, timing_dt, binned_dt, pi_diagnostic_dt,
-                               full_counts, is_pilot, n_workers = 1L,
-                               wall_time_s = NA_real_) {
-  valid_dt <- run_dt[qc_flag == "ok" & is.finite(flux_retrieved_mg_m2_d)]
-  median_base_s <- stats::median(timing_dt$base_profile_seconds, na.rm = TRUE)
-  median_flux_s <- stats::median(timing_dt$flux_loop_seconds / pmax(timing_dt$n_fluxes, 1), na.rm = TRUE)
-  est_full_serial_s <- median_base_s * full_counts$n_base + median_flux_s * full_counts$n_scenarios
-  est_full_parallel_s <- est_full_serial_s / max(1L, as.integer(n_workers))
-  main_transition_labels <- intersect(PRIMARY_TRANSITION_LABELS, TRANSITION_LABELS)
-  if (!length(main_transition_labels)) {
-    main_transition_labels <- TRANSITION_LABELS
-  }
-  additional_transition_labels <- intersect(ADDITIONAL_TRANSITION_LABELS, TRANSITION_LABELS)
-  supplemental_label_text <- if (length(additional_transition_labels)) {
-    paste(additional_transition_labels, collapse = ", ")
-  } else {
-    "none"
-  }
-
-  c(
-    "# Dimensionless framework analysis",
-    "",
-    sprintf("- Mode: %s", ifelse(isTRUE(is_pilot), "pilot timing subset", "full sweep")),
-    sprintf("- Transitions: %s", paste(TRANSITION_LABELS, collapse = ", ")),
-    sprintf("- Main figure transitions: %s",
-            paste(main_transition_labels, collapse = ", ")),
-    sprintf("- Supplemental figure transitions: %s",
-            supplemental_label_text),
-    sprintf("- Receptor design: %s (%d azimuths x %d heights = %d receptors)",
-            DESIGN_NAME, SAMPLING_CONFIGS[[DESIGN_NAME]]$n_azimuth,
-            length(SAMPLING_CONFIGS[[DESIGN_NAME]]$heights_m),
-            SAMPLING_CONFIGS[[DESIGN_NAME]]$n_azimuth * length(SAMPLING_CONFIGS[[DESIGN_NAME]]$heights_m)),
-    sprintf("- Height mode: %s; cylinder top: %.1f m", HEIGHT_MODE, TOP_HEIGHT_M),
-    sprintf("- Mission durations: %s min", paste(MISSION_DURATIONS_MIN, collapse = ", ")),
-    "- Note: each mission is one start-of-transition retrieval window; duration changes dwell time and transition exposure, not sampling density.",
-    sprintf("- Wind speed sweep: %s m/s; mean direction %.1f deg; stochastic direction = %s",
-            format_num_vec(U_REF_GRID_M_S), WD_DEG, STOCHASTIC_WIND),
-    sprintf("- Pi binning summary: %s", PI_SUMMARY),
-    sprintf("- Run rows completed: %d", nrow(run_dt)),
-    sprintf("- Retrieval windows completed: %d", sum(run_dt$n_retrieval_windows, na.rm = TRUE)),
-    sprintf("- Valid retrieval fraction: %.3f", nrow(valid_dt) / max(nrow(run_dt), 1)),
-    sprintf("- Run-level bias range: %.2f to %.2f%%",
-            min(run_dt$retrieval_bias_pct, na.rm = TRUE),
-            max(run_dt$retrieval_bias_pct, na.rm = TRUE)),
-    sprintf("- Binned RMSE range: %.2f to %.2f%%",
-            min(binned_dt$rmse_pct, na.rm = TRUE),
-            max(binned_dt$rmse_pct, na.rm = TRUE)),
-    sprintf("- Binned rows: %d", nrow(binned_dt)),
-    sprintf("- Pi diagnostic summary rows: %d", nrow(pi_diagnostic_dt)),
-    "",
-    "## Runtime",
-    "",
-    sprintf("- Observed wall-clock time for this run: %s", format_duration(wall_time_s)),
-    sprintf("- Worker count: %d", as.integer(n_workers)),
-    sprintf("- Median base plume time: %s", format_duration(median_base_s)),
-    sprintf("- Median per-flux retrieval time: %s", format_duration(median_flux_s)),
-    sprintf("- Estimated full-grid serial-equivalent runtime from these timings: %s", format_duration(est_full_serial_s)),
-    sprintf("- Estimated full-grid parallel runtime from these timings: %s", format_duration(est_full_parallel_s)),
-    sprintf("- Full-grid base cases: %d", full_counts$n_base),
-    sprintf("- Full-grid scenario rows: %d", full_counts$n_scenarios),
-    "",
-    "## Next steps",
-    "",
-    "- Compare weighted transitional Pi binning against start, mid, end, and unweighted mean Pi binning.",
-    "- Decide whether stochastic wind-direction variability should remain the default or become a sensitivity mode.",
-    "- Add a Monte Carlo mode if uncertainty is needed rather than single-run bin RMSE.",
-    "- Add a second experiment that varies receptor count if sampling-density effects need explicit testing.",
-    "- Keep real-lake overlay points deferred until literature values and assumed mission designs are agreed."
-  )
 }
 
 
@@ -1641,7 +1561,6 @@ run_base_case <- function(base_spec) {
 # 4. Run sweep
 # -----------------------------------------------------------------------------
 pb <- make_progress(nrow(base_grid), label = "Dimensionless base plumes")
-sweep_start <- Sys.time()
 base_specs <- lapply(seq_len(nrow(base_grid)), function(idx) {
   list(base_idx = idx, base_row = base_grid[idx])
 })
@@ -1728,33 +1647,20 @@ run_dt <- rbindlist(lapply(flat_results, `[[`, "run_rows"), fill = TRUE)
 timing_dt <- rbindlist(lapply(flat_results, `[[`, "timing"), fill = TRUE)
 binned_dt <- summarise_binned_results(run_dt, N_PI_S_BINS, N_PI_G_BINS, PI_SUMMARY)
 pi_diagnostic_dt <- build_pi_diagnostic_summary(run_dt, PI_SUMMARY)
-sweep_wall_time_s <- as.numeric(difftime(Sys.time(), sweep_start, units = "secs"))
 
 
 # -----------------------------------------------------------------------------
-# 5. Save tables and report
+# 5. Save tables
 # -----------------------------------------------------------------------------
 fwrite(run_dt, RUNS_CSV)
 fwrite(timing_dt, TIMINGS_CSV)
 fwrite(binned_dt, BINNED_CSV)
 fwrite(pi_diagnostic_dt, PI_DIAGNOSTIC_CSV)
-report_lines <- build_report_lines(
-  run_dt = run_dt,
-  timing_dt = timing_dt,
-  binned_dt = binned_dt,
-  pi_diagnostic_dt = pi_diagnostic_dt,
-  full_counts = list(n_base = full_n_base, n_scenarios = full_n_scenarios),
-  is_pilot = PILOT,
-  n_workers = N_WORKERS,
-  wall_time_s = sweep_wall_time_s
-)
-writeLines(report_lines, REPORT_MD)
 
 message(sprintf("Saved run-level CSV:      %s", normalizePath(RUNS_CSV, mustWork = FALSE)))
 message(sprintf("Saved timing CSV:         %s", normalizePath(TIMINGS_CSV, mustWork = FALSE)))
 message(sprintf("Saved binned summary CSV: %s", normalizePath(BINNED_CSV, mustWork = FALSE)))
 message(sprintf("Saved Pi diagnostics CSV: %s", normalizePath(PI_DIAGNOSTIC_CSV, mustWork = FALSE)))
-message(sprintf("Saved report:             %s", normalizePath(REPORT_MD, mustWork = FALSE)))
 
 
 # -----------------------------------------------------------------------------

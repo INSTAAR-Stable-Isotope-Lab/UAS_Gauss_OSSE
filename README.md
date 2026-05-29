@@ -2,7 +2,7 @@
 
 This repository accompanies the manuscript **"Evaluation of area-source methane-emission quantification by Uncrewed Aerial Systems using Gauss's law"**.
 
-The code implements an observing system simulation experiment (OSSE) for UAS-based methane flux retrieval over an idealized circular lake. A Gaussian-plume forward model generates synthetic methane enhancement fields, simulated UAS receptors sample a cylindrical control surface, and a Conley-style cylindrical mass-balance inverse retrieves the lake-integrated flux.
+The code implements an observing system simulation experiment (OSSE) for UAS-based methane flux retrieval over an idealized circular lake. A Gaussian-plume forward model generates synthetic methane enhancement fields, simulated UAS receptors sample a cylindrical control surface, and a cylindrical mass-balance inverse retrieves the lake-integrated flux.
 
 ## Repository Scope
 

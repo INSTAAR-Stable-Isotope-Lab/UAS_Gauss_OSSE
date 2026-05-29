@@ -250,11 +250,6 @@ fmt_design <- function(n_azimuth, n_heights) {
   sprintf("%d azimuths x %d heights", as.integer(round(n_azimuth)), as.integer(round(n_heights)))
 }
 
-write_lines_file <- function(path, lines) {
-  writeLines(enc2utf8(lines), con = path, useBytes = TRUE)
-  invisible(path)
-}
-
 build_spatial_key_table <- function(summary_dt) {
   class_levels <- sort(unique(summary_dt$pasquill_class))
 
@@ -351,94 +346,6 @@ build_spatial_min_height_table <- function(summary_dt) {
     selected_bias_mean_pct = bias_mean_pct,
     selected_valid_fraction = valid_fraction
   )][order(pasquill_class, n_azimuth)]
-}
-
-build_spatial_report_lines <- function(summary_dt, key_dt, min_az_dt, min_height_dt) {
-  reference_area <- nearest_tested_value(summary_dt$effective_cell_area_m2)
-  ref_dt <- copy(summary_dt)[, .ref_gap := abs(effective_cell_area_m2 - reference_area)][
-    order(pasquill_class, .ref_gap, rmse_pct)
-  ][, .SD[1], by = pasquill_class]
-  ref_dt[, .ref_gap := NULL]
-
-  best_bias_idx <- safe_which_min(ref_dt$bias_mean_pct)
-  worst_bias_idx <- safe_which_max(ref_dt$bias_mean_pct)
-  best_rmse_idx <- safe_which_min(ref_dt$rmse_pct)
-  worst_rmse_idx <- safe_which_max(ref_dt$rmse_pct)
-  best_bias_row <- if (is.finite(best_bias_idx)) ref_dt[best_bias_idx] else ref_dt[1]
-  worst_bias_row <- if (is.finite(worst_bias_idx)) ref_dt[worst_bias_idx] else ref_dt[1]
-  best_rmse_row <- if (is.finite(best_rmse_idx)) ref_dt[best_rmse_idx] else ref_dt[1]
-  worst_rmse_row <- if (is.finite(worst_rmse_idx)) ref_dt[worst_rmse_idx] else ref_dt[1]
-
-  class_lines <- vapply(seq_len(nrow(key_dt)), function(i) {
-    sprintf(
-      "- Pasquill %s: the coarsest tested design meeting RMSE < %s was %s (effective cell area %s m^2, mean bias %s, RMSE %s, valid fraction %s). Halving effective cell area changed RMSE by %s percentage points on the fitted log-area trend.",
-      key_dt$pasquill_class[i],
-      fmt_pct(key_dt$rmse_target_pct[i], 0),
-      fmt_design(key_dt$recommended_n_azimuth[i], key_dt$recommended_n_height_levels[i]),
-      fmt_num(key_dt$recommended_effective_cell_area_m2[i], 2),
-      fmt_pct(key_dt$recommended_bias_mean_pct[i]),
-      fmt_pct(key_dt$recommended_rmse_pct[i]),
-      fmt_pct(100 * key_dt$recommended_valid_fraction[i]),
-      fmt_num(key_dt$rmse_change_halving_area_pct_points[i], 2)
-    )
-  }, character(1))
-
-  min_az_lines <- vapply(seq_len(nrow(min_az_dt)), function(i) {
-    if (!is.finite(min_az_dt$min_azimuth_for_rmse25[i])) {
-      sprintf("- Pasquill %s with %d height levels: no tested azimuth count met RMSE < %s.",
-              min_az_dt$pasquill_class[i], min_az_dt$n_height_levels[i], fmt_pct(RESULTS_RMSE_TARGET_PCT, 0))
-    } else {
-      sprintf("- Pasquill %s with %d height levels: the minimum tested azimuth count meeting RMSE < %s was %d.",
-              min_az_dt$pasquill_class[i], min_az_dt$n_height_levels[i], fmt_pct(RESULTS_RMSE_TARGET_PCT, 0),
-              as.integer(min_az_dt$min_azimuth_for_rmse25[i]))
-    }
-  }, character(1))
-
-  min_height_lines <- vapply(seq_len(nrow(min_height_dt)), function(i) {
-    if (!is.finite(min_height_dt$min_height_levels_for_rmse25[i])) {
-      sprintf("- Pasquill %s with %d azimuths: no tested height count met RMSE < %s.",
-              min_height_dt$pasquill_class[i], min_height_dt$n_azimuth[i], fmt_pct(RESULTS_RMSE_TARGET_PCT, 0))
-    } else {
-      sprintf("- Pasquill %s with %d azimuths: the minimum tested height count meeting RMSE < %s was %d.",
-              min_height_dt$pasquill_class[i], min_height_dt$n_azimuth[i], fmt_pct(RESULTS_RMSE_TARGET_PCT, 0),
-              as.integer(min_height_dt$min_height_levels_for_rmse25[i]))
-    }
-  }, character(1))
-
-  c(
-    "# Spatial Resolution Results Report",
-    "",
-    "This report summarizes the manuscript-oriented statistics for the constant-atmosphere spatial-resolution sweep.",
-    "",
-    "## Core Findings",
-    "",
-    sprintf("- Across all tested spatial designs, the reference mid-range effective cell area was %s m^2.", fmt_num(reference_area, 2)),
-    sprintf("- At that reference resolution, the lowest mean bias occurred in Pasquill %s (%s) and the highest mean bias occurred in Pasquill %s (%s).",
-            best_bias_row$pasquill_class[1], fmt_pct(best_bias_row$bias_mean_pct[1]),
-            worst_bias_row$pasquill_class[1], fmt_pct(worst_bias_row$bias_mean_pct[1])),
-    sprintf("- At that same reference resolution, the lowest RMSE occurred in Pasquill %s (%s) and the highest RMSE occurred in Pasquill %s (%s).",
-            best_rmse_row$pasquill_class[1], fmt_pct(best_rmse_row$rmse_pct[1]),
-            worst_rmse_row$pasquill_class[1], fmt_pct(worst_rmse_row$rmse_pct[1])),
-    sprintf("- The range in mean bias across stability classes at the reference resolution was %s percentage points, and the range in RMSE was %s percentage points.",
-            fmt_num(safe_span(ref_dt$bias_mean_pct), 2),
-            fmt_num(safe_span(ref_dt$rmse_pct), 2)),
-    "",
-    "## Recommended Designs By Stability Class",
-    "",
-    class_lines,
-    "",
-    "## Minimum Azimuth Counts By Height Count",
-    "",
-    min_az_lines,
-    "",
-    "## Minimum Height Counts By Azimuth Count",
-    "",
-    min_height_lines,
-    "",
-    "## Operational Takeaway",
-    "",
-    sprintf("- Under this Gaussian-forward / Conley-inverse setup, the spatial design can be coarsened up to the class-specific recommended limits above before the tested-grid RMSE exceeds %s. The accompanying key and threshold tables identify whether azimuthal density or vertical density was the tighter constraint for each stability class.", fmt_pct(RESULTS_RMSE_TARGET_PCT, 0))
-  )
 }
 
 build_nearby_baseline_table <- function(run_dt, true_flux_mg_m2_d) {
@@ -544,56 +451,6 @@ build_nearby_key_table <- function(summary_dt, baseline_dt) {
   }), fill = TRUE)
 }
 
-build_nearby_report_lines <- function(key_dt) {
-  strongest_idx <- safe_which_max(abs(key_dt$contamination_bias_reference_pct))
-  weakest_idx <- safe_which_min(abs(key_dt$contamination_bias_reference_pct))
-  most_residual_idx <- safe_which_max(abs(key_dt$contamination_bias_farthest_pct))
-  least_residual_idx <- safe_which_min(abs(key_dt$contamination_bias_farthest_pct))
-  strongest <- if (is.finite(strongest_idx)) key_dt[strongest_idx] else key_dt[1]
-  weakest <- if (is.finite(weakest_idx)) key_dt[weakest_idx] else key_dt[1]
-  most_residual <- if (is.finite(most_residual_idx)) key_dt[most_residual_idx] else key_dt[1]
-  least_residual <- if (is.finite(least_residual_idx)) key_dt[least_residual_idx] else key_dt[1]
-
-  class_lines <- vapply(seq_len(nrow(key_dt)), function(i) {
-    sprintf(
-      "- Pasquill %s: clean baseline retrieval was %s (baseline bias %s). Contamination bias declined from %s at %s to %s at %s. The minimum tested distance meeting |contamination bias| < 10%% was %s, the minimum meeting |contamination bias| < 5%% was %s, and the minimum meeting |flux-vector contamination| < 10%% was %s.",
-      key_dt$pasquill_class[i],
-      fmt_num(key_dt$clean_baseline_flux_mean_mg_m2_d[i], 2),
-      fmt_pct(key_dt$clean_baseline_bias_mean_pct[i]),
-      fmt_pct(key_dt$contamination_bias_nearest_pct[i]),
-      fmt_distance(key_dt$nearest_distance_m[i]),
-      fmt_pct(key_dt$contamination_bias_farthest_pct[i]),
-      fmt_distance(key_dt$farthest_distance_m[i]),
-      fmt_distance(key_dt$distance_threshold_bias10_m[i]),
-      fmt_distance(key_dt$distance_threshold_bias5_m[i]),
-      fmt_distance(key_dt$distance_threshold_fv10_m[i])
-    )
-  }, character(1))
-
-  c(
-    "# Nearby-Lake Contamination Results Report",
-    "",
-    "This report summarizes the manuscript-oriented statistics for the nearby-lake contamination sweep.",
-    "",
-    "## Core Findings",
-    "",
-    sprintf("- At the reference mid-range tested distance, the weakest contamination effect occurred in Pasquill %s (%s) and the strongest in Pasquill %s (%s).",
-            weakest$pasquill_class[1], fmt_pct(weakest$contamination_bias_reference_pct[1]),
-            strongest$pasquill_class[1], fmt_pct(strongest$contamination_bias_reference_pct[1])),
-    sprintf("- At the farthest tested distance, the smallest residual contamination bias occurred in Pasquill %s (%s) and the largest in Pasquill %s (%s).",
-            least_residual$pasquill_class[1], fmt_pct(least_residual$contamination_bias_farthest_pct[1]),
-            most_residual$pasquill_class[1], fmt_pct(most_residual$contamination_bias_farthest_pct[1])),
-    "",
-    "## Class-Specific Thresholds",
-    "",
-    class_lines,
-    "",
-    "## Operational Takeaway",
-    "",
-    "- The nearby-lake risk is strongly class-dependent. The key table identifies the minimum tested distance at which absolute contamination bias falls below 10% and 5%, alongside the clean-baseline bias and flux-vector diagnostics needed to interpret how contamination enters the Conley integral."
-  )
-}
-
 maybe_write_full_analysis_synthesis <- function(output_dir) {
   paths <- list(
     spatial_key = file.path(output_dir, "spatial_resolution_constant_atmosphere_key_table.csv"),
@@ -602,8 +459,7 @@ maybe_write_full_analysis_synthesis <- function(output_dir) {
     spatial_summary = file.path(output_dir, "spatial_resolution_constant_atmosphere_summary.csv"),
     temporal_summary = file.path(output_dir, "temporal_measurement_changing_atmosphere_summary.csv"),
     nearby_summary = file.path(output_dir, "nearby_lake_contamination_distance_summary.csv"),
-    synthesis_table = file.path(output_dir, "full_analysis_results_synthesis_table.csv"),
-    synthesis_report = file.path(output_dir, "full_analysis_results_synthesis_report.md")
+    synthesis_table = file.path(output_dir, "full_analysis_results_synthesis_table.csv")
   )
 
   required_inputs <- unlist(paths[c("spatial_key", "temporal_key", "nearby_key",
@@ -685,7 +541,6 @@ maybe_write_full_analysis_synthesis <- function(output_dir) {
   spatial_abs_bias <- abs(spatial_summary$bias_mean_pct)
   temporal_abs_bias <- abs(temporal_summary$retrieval_bias_mean_pct)
   nearby_retrieval_abs_bias <- abs(nearby_summary$retrieval_bias_mean_pct)
-  nearby_contam_abs_bias <- if ("contamination_bias_mean_pct" %in% names(nearby_summary)) abs(nearby_summary$contamination_bias_mean_pct) else numeric(0)
 
   retrieval_rmse_all <- c(spatial_summary$rmse_pct,
                           temporal_summary$retrieval_rmse_pct,
@@ -709,88 +564,6 @@ maybe_write_full_analysis_synthesis <- function(output_dir) {
 
   synthesis_dt <- rbindlist(rows, fill = TRUE)
   fwrite(synthesis_dt, paths$synthesis_table)
-
-  spatial_lines <- if (nrow(spatial_key)) {
-    vapply(seq_len(nrow(spatial_key)), function(i) {
-      sprintf(
-        "- Pasquill %s: recommended spatial design was %s (effective cell area %s m^2, mean bias %s, RMSE %s, valid fraction %s).",
-        spatial_key$pasquill_class[i],
-        fmt_design(spatial_key$recommended_n_azimuth[i], spatial_key$recommended_n_height_levels[i]),
-        fmt_num(spatial_key$recommended_effective_cell_area_m2[i], 2),
-        fmt_pct(spatial_key$recommended_bias_mean_pct[i]),
-        fmt_pct(spatial_key$recommended_rmse_pct[i]),
-        fmt_pct(100 * spatial_key$recommended_valid_fraction[i])
-      )
-    }, character(1))
-  } else {
-    character(0)
-  }
-
-  temporal_lines <- if (nrow(temporal_key)) {
-    vapply(seq_len(nrow(temporal_key)), function(i) {
-      if ("experiment_family" %in% names(temporal_key) &&
-          identical(temporal_key$experiment_family[i], "repeat_profile")) {
-        sprintf(
-          "- %s transition, repeated full-profile mean: the slowest tested full-profile duration meeting RMSE < 25%% was %s; bias changed from %s at the fastest profile to %s at the slowest.",
-          temporal_key$transition[i],
-          fmt_hours(temporal_key$max_duration_rmse25_h[i]),
-          fmt_pct(temporal_key$bias_at_shortest_pct[i]),
-          fmt_pct(temporal_key$bias_at_longest_pct[i])
-        )
-      } else {
-        sprintf(
-          "- %s transition, single mission: the longest tested mission meeting RMSE < 25%% was %s; bias changed from %s at the shortest mission to %s at the longest.",
-          temporal_key$transition[i],
-          fmt_hours(temporal_key$max_duration_rmse25_h[i]),
-          fmt_pct(temporal_key$bias_at_shortest_pct[i]),
-          fmt_pct(temporal_key$bias_at_longest_pct[i])
-        )
-      }
-    }, character(1))
-  } else {
-    character(0)
-  }
-
-  nearby_lines <- if (nrow(nearby_key)) {
-    vapply(seq_len(nrow(nearby_key)), function(i) {
-      sprintf(
-        "- Pasquill %s: the minimum tested inter-lake distance meeting |contamination bias| < 10%% was %s; contamination bias declined from %s at the nearest distance to %s at the farthest.",
-        nearby_key$pasquill_class[i],
-        fmt_distance(nearby_key$distance_threshold_bias10_m[i]),
-        fmt_pct(nearby_key$contamination_bias_nearest_pct[i]),
-        fmt_pct(nearby_key$contamination_bias_farthest_pct[i])
-      )
-    }, character(1))
-  } else {
-    character(0)
-  }
-
-  report_lines <- c(
-    "# Full Analysis Results Synthesis",
-    "",
-    "This synthesis combines the three full-analysis workflows after their enriched summary tables and key tables were written to `output/`.",
-    "",
-    "## Overall Capability Envelope",
-    "",
-    sprintf("- Worst-case absolute retrieval mean bias across all tested scenarios was %s.", fmt_pct(safe_max_value(c(spatial_abs_bias, temporal_abs_bias, nearby_retrieval_abs_bias)))),
-    sprintf("- Worst-case contamination-specific mean bias in the nearby-lake analysis was %s.", fmt_pct(safe_max_value(nearby_contam_abs_bias))),
-    sprintf("- Worst-case retrieval RMSE across all tested scenarios was %s.", fmt_pct(safe_max_value(retrieval_rmse_all))),
-    sprintf("- Best-case valid fraction was %s and worst-case valid fraction was %s.", fmt_pct(100 * safe_max_value(valid_all)), fmt_pct(100 * safe_min_value(valid_all))),
-    "",
-    "## Spatial Recommendations",
-    "",
-    spatial_lines,
-    "",
-    "## Temporal Recommendations",
-    "",
-    temporal_lines,
-    "",
-    "## Nearby-Lake Recommendations",
-    "",
-    nearby_lines
-  )
-
-  write_lines_file(paths$synthesis_report, report_lines)
   invisible(TRUE)
 }
 

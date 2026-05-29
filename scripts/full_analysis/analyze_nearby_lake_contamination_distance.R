@@ -125,7 +125,6 @@ FIG_PNG <- file.path(OUTPUT_DIR, sprintf("%s.png", OUTPUT_STEM))
 FIG_10KM_PNG <- file.path(OUTPUT_DIR, sprintf("%s_10km.png", OUTPUT_STEM))
 KEY_CSV <- file.path(OUTPUT_DIR, sprintf("%s_key_table.csv", OUTPUT_STEM))
 BASELINE_CSV <- file.path(OUTPUT_DIR, sprintf("%s_clean_baseline_table.csv", OUTPUT_STEM))
-REPORT_MD <- file.path(OUTPUT_DIR, sprintf("%s_report.md", OUTPUT_STEM))
 PAPER_STATS_CSV <- file.path(OUTPUT_DIR, sprintf("%s_paper_stats.csv", OUTPUT_STEM))
 
 FIG_BASE_SIZE <- 12
@@ -500,7 +499,7 @@ build_composite_figure <- function(plot_dt,
     show_true_flux = FALSE
   ) +
     labs(
-      title = "Nearby-lake contamination impact on Conley retrieval",
+      title = "Nearby-lake contamination impact on cylindrical-flux method",
       subtitle = sprintf(
         "%d azimuths x %d heights | 100 m main lake, 50 m nearby lake | %s",
         design_cfg$n_azimuth,
@@ -583,7 +582,7 @@ build_distance_response_figure <- function(plot_dt,
     show_true_flux = FALSE
   ) +
     labs(
-      title = "Nearby-lake contamination impact on Conley retrieval",
+      title = "Nearby-lake contamination impact on cylindrical-flux retrieval",
       subtitle = sprintf(
         "%d azimuths x %d heights | 100 m main lake, 50 m nearby lake | %s",
         design_cfg$n_azimuth,
@@ -916,7 +915,6 @@ run_dt <- rbindlist(run_rows, fill = TRUE)
 summary_dt <- compute_summary(run_dt, true_flux_mg_m2_d = BASE_FLUX_MG_D)
 baseline_dt <- build_nearby_baseline_table(run_dt, true_flux_mg_m2_d = BASE_FLUX_MG_D)
 key_dt <- build_nearby_key_table(summary_dt, baseline_dt)
-report_lines <- build_nearby_report_lines(key_dt)
 
 
 # -----------------------------------------------------------------------------
@@ -926,14 +924,12 @@ fwrite(run_dt, RUNS_CSV)
 fwrite(summary_dt, SUMMARY_CSV)
 fwrite(key_dt, KEY_CSV)
 fwrite(baseline_dt, BASELINE_CSV)
-write_lines_file(REPORT_MD, report_lines)
 message(sprintf("Saved run-level CSV: %s", normalizePath(RUNS_CSV, mustWork = FALSE)))
 message(sprintf("Saved summary CSV:   %s", normalizePath(SUMMARY_CSV, mustWork = FALSE)))
 message(sprintf("Saved key table:     %s", normalizePath(KEY_CSV, mustWork = FALSE)))
 message(sprintf("Saved baseline table: %s", normalizePath(BASELINE_CSV, mustWork = FALSE)))
-message(sprintf("Saved report:        %s", normalizePath(REPORT_MD, mustWork = FALSE)))
 if (isTRUE(maybe_write_full_analysis_synthesis(OUTPUT_DIR))) {
-  message("Updated cross-analysis synthesis outputs.")
+  message("Updated cross-analysis synthesis table.")
 }
 }
 
@@ -1016,4 +1012,3 @@ ggsave_osse(FIG_10KM_PNG, main_grid_10km, width = 14, height = 6.5, dpi = 220, b
 message(sprintf("Saved 10 km response figure: %s", normalizePath(FIG_10KM_PNG, mustWork = FALSE)))
 
 message("Analysis complete.")
-

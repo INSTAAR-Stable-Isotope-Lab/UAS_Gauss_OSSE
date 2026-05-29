@@ -128,7 +128,6 @@ KEY_CSV     <- file.path(OUTPUT_DIR, sprintf("%s_key_table.csv", OUTPUT_STEM))
 MIN_AZ_CSV  <- file.path(OUTPUT_DIR, sprintf("%s_min_azimuth_by_height.csv", OUTPUT_STEM))
 MIN_H_CSV   <- file.path(OUTPUT_DIR, sprintf("%s_min_height_by_azimuth.csv", OUTPUT_STEM))
 PAPER_STATS_CSV <- file.path(OUTPUT_DIR, sprintf("%s_paper_stats.csv", OUTPUT_STEM))
-REPORT_MD   <- file.path(OUTPUT_DIR, sprintf("%s_report.md", OUTPUT_STEM))
 
 FIG_BASE_SIZE <- 12
 FIG_POINT_SIZE <- 2.8
@@ -715,7 +714,6 @@ summary_dt <- compute_summary(run_dt, true_flux_mg_m2_d = BASE_FLUX_MG_D)
 key_dt <- build_spatial_key_table(summary_dt)
 min_az_dt <- build_spatial_min_az_table(summary_dt)
 min_height_dt <- build_spatial_min_height_table(summary_dt)
-report_lines <- build_spatial_report_lines(summary_dt, key_dt, min_az_dt, min_height_dt)
 
 
 # -----------------------------------------------------------------------------
@@ -727,15 +725,13 @@ fwrite(key_dt, KEY_CSV)
 fwrite(min_az_dt, MIN_AZ_CSV)
 fwrite(min_height_dt, MIN_H_CSV)
 write_spatial_paper_stats(summary_dt, PAPER_STATS_CSV)
-write_lines_file(REPORT_MD, report_lines)
 message(sprintf("Saved run-level CSV: %s", normalizePath(RUNS_CSV, mustWork = FALSE)))
 message(sprintf("Saved summary CSV:   %s", normalizePath(SUMMARY_CSV, mustWork = FALSE)))
 message(sprintf("Saved key table:     %s", normalizePath(KEY_CSV, mustWork = FALSE)))
 message(sprintf("Saved azimuth table: %s", normalizePath(MIN_AZ_CSV, mustWork = FALSE)))
 message(sprintf("Saved height table:  %s", normalizePath(MIN_H_CSV, mustWork = FALSE)))
-message(sprintf("Saved report:        %s", normalizePath(REPORT_MD, mustWork = FALSE)))
 if (isTRUE(maybe_write_full_analysis_synthesis(OUTPUT_DIR))) {
-  message("Updated cross-analysis synthesis outputs.")
+  message("Updated cross-analysis synthesis table.")
 }
 
 
@@ -848,4 +844,3 @@ ggsave_osse(PRECISION_FIG_PNG, precision_plot, width = 9.5, height = 6.5, dpi = 
 message(sprintf("Saved precision figure: %s", normalizePath(PRECISION_FIG_PNG, mustWork = FALSE)))
 
 message("Analysis complete.")
-

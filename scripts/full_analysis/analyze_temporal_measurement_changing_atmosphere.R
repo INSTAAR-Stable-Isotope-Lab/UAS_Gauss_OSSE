@@ -151,7 +151,6 @@ SUMMARY_CSV <- file.path(OUTPUT_DIR, sprintf("%s_summary.csv", OUTPUT_STEM))
 FIG_PNG <- file.path(OUTPUT_DIR, sprintf("%s_composite.png", OUTPUT_STEM))
 ADDITIONAL_FIG_PNG <- file.path(OUTPUT_DIR, sprintf("%s_additional_transitions_2x2.png", OUTPUT_STEM))
 KEY_CSV <- file.path(OUTPUT_DIR, sprintf("%s_key_table.csv", OUTPUT_STEM))
-REPORT_MD <- file.path(OUTPUT_DIR, sprintf("%s_report.md", OUTPUT_STEM))
 PAPER_STATS_CSV <- file.path(OUTPUT_DIR, sprintf("%s_paper_stats.csv", OUTPUT_STEM))
 
 FIG_BASE_SIZE <- 12
@@ -851,76 +850,6 @@ build_temporal_key_table <- function(summary_dt) {
   }), fill = TRUE)
 }
 
-build_temporal_report_lines <- function(key_dt) {
-  single_key <- key_dt[experiment_family == "single_mission"]
-  repeat_key <- key_dt[experiment_family == "repeat_profile"]
-
-  most_sensitive_idx <- safe_which_max(abs(key_dt$bias_growth_pct_per_h))
-  most_sensitive <- if (is.finite(most_sensitive_idx)) key_dt[most_sensitive_idx] else key_dt[1]
-
-  single_lines <- vapply(seq_len(nrow(single_key)), function(i) {
-    sprintf(
-      "- %s transition: bias changed from %s at %s to %s at %s; retrieval RMSE changed from %s to %s. The longest tested mission meeting RMSE < %s was %s, and the longest meeting |mean bias| < %s was %s.",
-      single_key$transition[i],
-      fmt_pct(single_key$bias_at_shortest_pct[i]),
-      fmt_hours(single_key$shortest_duration_h[i]),
-      fmt_pct(single_key$bias_at_longest_pct[i]),
-      fmt_hours(single_key$longest_duration_h[i]),
-      fmt_pct(single_key$rmse_at_shortest_pct[i]),
-      fmt_pct(single_key$rmse_at_longest_pct[i]),
-      fmt_pct(RESULTS_RMSE_TARGET_PCT, 0),
-      fmt_hours(single_key$max_duration_rmse25_h[i]),
-      fmt_pct(RESULTS_ABS_BIAS_TARGET_PCT, 0),
-      fmt_hours(single_key$max_duration_abs_bias10_h[i])
-    )
-  }, character(1))
-
-  repeat_lines <- vapply(seq_len(nrow(repeat_key)), function(i) {
-    sprintf(
-      "- %s transition: averaging suite-by-suite Conley retrievals across the %s transition window, bias changed from %s at %s per full profile to %s at %s per full profile. Retrieval RMSE changed from %s to %s. The slowest tested full-profile duration meeting RMSE < %s was %s, and the slowest meeting |mean bias| < %s was %s.",
-      repeat_key$transition[i],
-      fmt_hours(repeat_key$observation_window_h[i]),
-      fmt_pct(repeat_key$bias_at_shortest_pct[i]),
-      fmt_hours(repeat_key$shortest_duration_h[i]),
-      fmt_pct(repeat_key$bias_at_longest_pct[i]),
-      fmt_hours(repeat_key$longest_duration_h[i]),
-      fmt_pct(repeat_key$rmse_at_shortest_pct[i]),
-      fmt_pct(repeat_key$rmse_at_longest_pct[i]),
-      fmt_pct(RESULTS_RMSE_TARGET_PCT, 0),
-      fmt_hours(repeat_key$max_duration_rmse25_h[i]),
-      fmt_pct(RESULTS_ABS_BIAS_TARGET_PCT, 0),
-      fmt_hours(repeat_key$max_duration_abs_bias10_h[i])
-    )
-  }, character(1))
-
-  c(
-    "# Temporal Measurement Results Report",
-    "",
-    "This report summarizes the manuscript-oriented statistics for the changing-atmosphere temporal analysis, including both single sequential missions and repeated full-profile tests averaged across suites.",
-    "",
-    "## Core Findings",
-    "",
-    sprintf("- The largest absolute bias-growth rate occurred for %s in the %s configuration (%s bias change per hour).",
-            most_sensitive$transition[1], tolower(most_sensitive$experiment_label[1]), fmt_num(most_sensitive$bias_growth_pct_per_h[1], 2)),
-    sprintf("- Across transitions, the largest increase in retrieval RMSE from the shortest to longest mission was %s percentage points.",
-            fmt_num(safe_max_value(key_dt$rmse_change_pct_points), 2)),
-    sprintf("- Across transitions, the largest decrease in valid fraction from the shortest to longest mission was %s percentage points.",
-            fmt_num(100 * abs(safe_min_value(key_dt$valid_fraction_change)), 2)),
-    "",
-    "## Sequential Mission Thresholds",
-    "",
-    single_lines,
-    "",
-    "## Repeated Full-Profile Thresholds",
-    "",
-    repeat_lines,
-    "",
-    "## Operational Takeaway",
-    "",
-    sprintf("- Under this quasi-steady Conley setup, both the acceptable one-pass mission duration and the acceptable repeated full-profile cadence are transition-dependent. The key table identifies the longest tested value on each axis that still satisfies RMSE < %s and |mean bias| < %s.", fmt_pct(RESULTS_RMSE_TARGET_PCT, 0), fmt_pct(RESULTS_ABS_BIAS_TARGET_PCT, 0))
-  )
-}
-
 build_temporal_paired_bias <- function(summary_dt, transition_name) {
   single_dt <- summary_dt[
     transition == transition_name & experiment_family == "single_mission",
@@ -1445,7 +1374,6 @@ run_dt <- rbindlist(run_batches, fill = TRUE)
 summary_dt <- compute_summary(run_dt, true_flux_mg_m2_d = BASE_FLUX_MG_D)
 key_dt <- build_temporal_key_table(summary_dt)
 paper_stats_dt <- write_temporal_paper_stats(summary_dt, PAPER_STATS_CSV)
-report_lines <- build_temporal_report_lines(key_dt)
 
 
 # -----------------------------------------------------------------------------
@@ -1454,13 +1382,11 @@ report_lines <- build_temporal_report_lines(key_dt)
 fwrite(run_dt, RUNS_CSV)
 fwrite(summary_dt, SUMMARY_CSV)
 fwrite(key_dt, KEY_CSV)
-write_lines_file(REPORT_MD, report_lines)
 message(sprintf("Saved run-level CSV: %s", normalizePath(RUNS_CSV, mustWork = FALSE)))
 message(sprintf("Saved summary CSV:   %s", normalizePath(SUMMARY_CSV, mustWork = FALSE)))
 message(sprintf("Saved key table:     %s", normalizePath(KEY_CSV, mustWork = FALSE)))
-message(sprintf("Saved report:        %s", normalizePath(REPORT_MD, mustWork = FALSE)))
 if (isTRUE(maybe_write_full_analysis_synthesis(OUTPUT_DIR))) {
-  message("Updated cross-analysis synthesis outputs.")
+  message("Updated cross-analysis synthesis table.")
 }
 
 
@@ -1722,4 +1648,3 @@ if (nrow(additional_plot_dt)) {
 }
 
 message("Analysis complete.")
-
